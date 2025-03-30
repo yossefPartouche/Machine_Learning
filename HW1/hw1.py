@@ -82,12 +82,11 @@ def gradient_descent(X, y, theta, eta, num_iters):
     
     theta = theta.copy() # optional: theta outside the function will not change
     J_history = [] # Use a python list to save the loss value in every iteration
-    
+    ###########################################################################
     for t in range(num_iters):
         theta = theta - (eta / len(y)) * (X.T @ (X @ theta - y))
         J = compute_loss(X, y, theta)
         J_history.append(J)
-        
     return theta, J_history
 
 def compute_pinv(X, y):
@@ -136,7 +135,7 @@ def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
         theta = theta - (eta / len(y)) * (X.T @ (X @ theta - y))
         J = compute_loss(X, y, theta)
         J_history.append(J)
-        if t > 0 and abs(J_history[-2] - J) < epsilon:
+        if t > 0 and abs(J - J_history[-1]) < epsilon:
             break
             
     return theta, J_history
@@ -221,7 +220,6 @@ def forward_feature_selection(X_train, y_train, X_val, y_val, best_eta, iteratio
             if loss < best_loss:
                 best_loss = loss
                 best_feature = col_feat
-                
         selected_features.append(best_feature)
 
     return selected_features
