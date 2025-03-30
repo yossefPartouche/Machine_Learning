@@ -8,16 +8,6 @@ import numpy as np
 import pandas as pd
 
 def preprocess(X,y):
-    X_mean = np.mean(X, axis=0)
-    Y_mean = np.mean(y)
-    #print("X_mean", X_mean)
-    X_std = np.std(X, axis=0)
-    Y_std = np.std(y)
-    #print("X_std", X_std)
-    X_standardized = (X - X_mean) / X_std
-    Y_standardized = (y - Y_mean) / Y_std
-    #print("X_standardized", X_standardized)
-
     """
     Perform Standardization on the features and true labels.
 
@@ -29,13 +19,13 @@ def preprocess(X,y):
     - X: The Standardized input data.
     - y: The Standardized true labels.
     """
-    ###########################################################################
-    # TODO: Implement the normalization function.                             #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    X_mean = np.mean(X, axis=0)
+    Y_mean = np.mean(y)
+    X_std = np.std(X, axis=0)
+    Y_std = np.std(y)
+    X_standardized = (X - X_mean) / X_std
+    Y_standardized = (y - Y_mean) / Y_std
+    
     return X_standardized, Y_standardized
 
 def apply_bias_trick(X):
@@ -50,18 +40,6 @@ def apply_bias_trick(X):
         zeroth position (n instances over p+1).
     """
     X_bias = np.column_stack((np.ones(X.shape[0]), X))
-    # Create a row of ones with the same length as X
-    #ones_row = np.ones_like(X)
-
-    # Stack them vertically
-    #X_bias = np.vstack((ones_row, X))
-
-    ###########################################################################
-    # TODO: Implement the bias trick by adding a column of ones to the data.                             #
-    ###########################################################################
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
     return X_bias
 
 def compute_loss(X, y, theta):
@@ -78,14 +56,7 @@ def compute_loss(X, y, theta):
     - J: the loss associated with the current set of parameters (single number).
     """
     
-    J = 0  # We use J for the loss.
-    ###########################################################################
-    J = np.sum(((X @ theta) - y) ** 2 )/ (2 * len(y))
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    J = np.sum(((X @ theta) - y) ** 2) / (2 * len(y))
     return J
 
 def gradient_descent(X, y, theta, eta, num_iters):
@@ -111,17 +82,12 @@ def gradient_descent(X, y, theta, eta, num_iters):
     
     theta = theta.copy() # optional: theta outside the function will not change
     J_history = [] # Use a python list to save the loss value in every iteration
-    #J_history.append(compute_loss(X, y, theta))
-    ###########################################################################
+    
     for t in range(num_iters):
-        theta = theta - (eta / len(y)) * (X.T @ (X @ theta - y) )
+        theta = theta - (eta / len(y)) * (X.T @ (X @ theta - y))
         J = compute_loss(X, y, theta)
         J_history.append(J)
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+        
     return theta, J_history
 
 def compute_pinv(X, y):
@@ -141,14 +107,7 @@ def compute_pinv(X, y):
     - pinv_theta: The optimal parameters of your model.
     """
     
-    pinv_theta = []
-    ###########################################################################
-    # TODO: Implement the pseudoinverse algorithm.                            #
-    ###########################################################################
     pinv_theta = (np.linalg.inv(X.T @ X)) @ X.T @ y
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
     return pinv_theta
 
 def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
@@ -172,19 +131,14 @@ def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
     
     theta = theta.copy() # optional: theta outside the function will not change
     J_history = [] # Use a python list to save the loss value in every iteration
-    ###########################################################################
    
     for t in range(max_iter):
-        theta = theta - (eta / len(y)) * (X.T @ (X @ theta - y) )
+        theta = theta - (eta / len(y)) * (X.T @ (X @ theta - y))
         J = compute_loss(X, y, theta)
         J_history.append(J)
-        if t > 0 and abs(J - J_history[-1]) < epsilon:
+        if t > 0 and abs(J_history[-2] - J) < epsilon:
             break
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+            
     return theta, J_history
 
 def find_best_learning_rate(X_train, y_train, X_val, y_val, iterations):
@@ -205,17 +159,13 @@ def find_best_learning_rate(X_train, y_train, X_val, y_val, iterations):
     
     etas = [0.00001, 0.00003, 0.0001, 0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 2, 3]
     eta_dict = {} # {eta_value: validation_loss}
-    ###########################################################################
+    
     for eta in etas:
         np.random.seed(42)
-        theta = np.random.random(size=2)
+        theta = np.random.random(size=X_train.shape[1])
         theta_itr, J_history = gradient_descent_stop_condition(X_train, y_train, theta, eta, iterations)
         eta_dict[eta] = compute_loss(X_val, y_val, theta_itr)
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+        
     return eta_dict
 
 def forward_feature_selection(X_train, y_train, X_val, y_val, best_eta, iterations):
@@ -239,9 +189,11 @@ def forward_feature_selection(X_train, y_train, X_val, y_val, best_eta, iteratio
     selected_features = []
     # number of features
     m = X_train.shape[1]
-    # Add bias trick
-    y_train = np.expand_dims(y_train, axis=1)
-
+    
+    # Apply bias trick inside the function
+    X_train_with_bias = apply_bias_trick(X_train)
+    X_val_with_bias = apply_bias_trick(X_val)
+    
     while len(selected_features) < 5:
         best_feature = None
         best_loss = float("inf")
@@ -249,16 +201,27 @@ def forward_feature_selection(X_train, y_train, X_val, y_val, best_eta, iteratio
         for col_feat in range(m):
             if col_feat in selected_features:
                 continue
-            X_train_subset = X_train[:, selected_features + [col_feat]]
-            X_val_subset = X_val[:, selected_features + [col_feat]]
-            theta_i = np.random.random(X_train_subset.shape[1]).reshape(-1,1)
-            #method 2 of computing Theta
-            theta_itr, J_history = gradient_descent_stop_condition(X_train_subset, y_train, theta_i, best_eta, iterations)
+                
+            # Select current features plus new candidate
+            current_features = selected_features + [col_feat]
+            
+            # Create subsets with selected features (plus bias)
+            X_train_subset = np.column_stack([X_train_with_bias[:,0], X_train[:,current_features]])  # Keep bias column
+            X_val_subset = np.column_stack([X_val_with_bias[:,0], X_val[:,current_features]])
+            
+            # Initialize theta for this feature set
+            theta_i = np.random.random(len(current_features) + 1)  # +1 for bias
+            
+            # Train model with these features
+            theta_itr, _ = gradient_descent_stop_condition(X_train_subset, y_train, theta_i, best_eta, iterations)
+            
+            # Evaluate on validation set
             loss = compute_loss(X_val_subset, y_val, theta_itr)
 
             if loss < best_loss:
                 best_loss = loss
                 best_feature = col_feat
+                
         selected_features.append(best_feature)
 
     return selected_features
@@ -276,14 +239,24 @@ def create_square_features(df):
     """
 
     df_poly = df.copy()
+    
+    # Create squared features
     df_squares = df_poly ** 2
     df_squares.columns = [f"{col}^2" for col in df_squares.columns]
+    
+    # Combine original and squared features
     df_poly = pd.concat([df_poly, df_squares], axis=1)
-    parwise_features = {}
+    
+    # Create pairwise interaction features
+    pairwise_features = {}
     for i in range(len(df.columns)):
         for j in range(i+1, len(df.columns)):
             f1, f2 = df.columns[i], df.columns[j]
-            parwise_features[f"{f1}*{f2}"] = df_poly[f1]*df_poly[f2]
-    df_pairs = pd.DataFrame(parwise_features)
+            pairwise_features[f"{f1}*{f2}"] = df[f1] * df[f2]
+            
+    df_pairs = pd.DataFrame(pairwise_features)
+    
+    # Combine all features
     df_poly = pd.concat([df_poly, df_pairs], axis=1)
+    
     return df_poly
