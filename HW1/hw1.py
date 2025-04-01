@@ -8,6 +8,16 @@ import numpy as np
 import pandas as pd
 
 def preprocess(X,y):
+    X_mean = np.mean(X, axis=0)
+    Y_mean = np.mean(y)
+    #print("X_mean", X_mean)
+    X_std = np.std(X, axis=0)
+    Y_std = np.std(y)
+    #print("X_std", X_std)
+    X_standardized = (X - X_mean) / X_std
+    Y_standardized = (y - Y_mean) / Y_std
+    #print("X_standardized", X_standardized)
+
     """
     Perform Standardization on the features and true labels.
 
@@ -26,7 +36,7 @@ def preprocess(X,y):
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
-    return X, y
+    return X_standardized, Y_standardized
 
 def apply_bias_trick(X):
     """
@@ -39,6 +49,12 @@ def apply_bias_trick(X):
     - X: Input data with an additional column of ones in the
         zeroth position (n instances over p+1).
     """
+    # Create a row of ones with the same length as X
+    ones_row = np.ones_like(X)
+
+    # Stack them vertically
+    X_bias = np.vstack((ones_row, X))
+
     ###########################################################################
     # TODO: Implement the bias trick by adding a column of ones to the data.                             #
     ###########################################################################
@@ -46,7 +62,7 @@ def apply_bias_trick(X):
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
-    return X
+    return X_bias
 
 def compute_loss(X, y, theta):
     """
@@ -64,7 +80,7 @@ def compute_loss(X, y, theta):
     
     J = 0  # We use J for the loss.
     ###########################################################################
-    # TODO: Implement the MSE loss function.                                  #
+    J = np.sum((theta @ X - y) ** 2) / (2 * len(y))
     ###########################################################################
     pass
     ###########################################################################
@@ -95,8 +111,12 @@ def gradient_descent(X, y, theta, eta, num_iters):
     
     theta = theta.copy() # optional: theta outside the function will not change
     J_history = [] # Use a python list to save the loss value in every iteration
+    #J_history.append(compute_loss(X, y, theta))
     ###########################################################################
-    # TODO: Implement the gradient descent optimization algorithm.            #
+    for t in range(num_iters):
+        theta = theta - eta * (1/len(y)) * ((theta @ X - y) @ X.T)
+        J = compute_loss(X, y, theta)
+        J_history.append(J)
     ###########################################################################
     pass
     ###########################################################################
@@ -125,7 +145,7 @@ def compute_pinv(X, y):
     ###########################################################################
     # TODO: Implement the pseudoinverse algorithm.                            #
     ###########################################################################
-    pass
+    pinv_theta = np.linalg.inv(X @ X.T) @ X @ y
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -153,7 +173,12 @@ def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
     theta = theta.copy() # optional: theta outside the function will not change
     J_history = [] # Use a python list to save the loss value in every iteration
     ###########################################################################
-    # TODO: Implement the gradient descent with stop condition optimization algorithm.  #
+    for t in range(max_iter):
+        theta = theta - eta * (1/len(y)) * ((theta @ X - y) @ X.T)
+        J = compute_loss(X, y, theta)
+        J_history.append(J)
+        if t > 0 and abs(J - J_history[-1]) < epsilon:
+            break
     ###########################################################################
     pass
     ###########################################################################
@@ -180,7 +205,13 @@ def find_best_learning_rate(X_train, y_train, X_val, y_val, iterations):
     etas = [0.00001, 0.00003, 0.0001, 0.0003, 0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 1, 2, 3]
     eta_dict = {} # {eta_value: validation_loss}
     ###########################################################################
-    # TODO: Implement the function and find the best eta value.             #
+    for eta in etas:
+        np.random.seed(42)
+        theta = np.random.random(size=2)
+        theta_itr, J_history = gradient_descent_stop_condition(X_train, y_train, theta, eta, iterations)
+        eta_dict[eta] = compute_loss(X_val, y_val, theta_itr)
+    print(eta_dict.keys())
+    print(eta_dict.values())
     ###########################################################################
     pass
     ###########################################################################
