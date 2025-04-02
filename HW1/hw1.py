@@ -49,16 +49,16 @@ def apply_bias_trick(X):
     - X: Input data with an additional column of ones in the
         zeroth position (n instances over p+1).
     """
+    X_bias = np.column_stack((np.ones(X.shape[0]), X))
     # Create a row of ones with the same length as X
-    ones_row = np.ones_like(X)
+    #ones_row = np.ones_like(X)
 
     # Stack them vertically
-    X_bias = np.vstack((ones_row, X))
+    #X_bias = np.vstack((ones_row, X))
 
     ###########################################################################
     # TODO: Implement the bias trick by adding a column of ones to the data.                             #
     ###########################################################################
-    pass
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -80,7 +80,7 @@ def compute_loss(X, y, theta):
     
     J = 0  # We use J for the loss.
     ###########################################################################
-    J = np.sum((theta @ X - y) ** 2) / (2 * len(y))
+    J = np.sum(((X @ theta) - y) ** 2 )/ (2 * len(y))
     ###########################################################################
     pass
     ###########################################################################
@@ -114,7 +114,7 @@ def gradient_descent(X, y, theta, eta, num_iters):
     #J_history.append(compute_loss(X, y, theta))
     ###########################################################################
     for t in range(num_iters):
-        theta = theta - eta * (1/len(y)) * ((theta @ X - y) @ X.T)
+        theta = theta - (eta / len(y)) * (X.T @ (X @ theta - y) )
         J = compute_loss(X, y, theta)
         J_history.append(J)
     ###########################################################################
@@ -145,7 +145,7 @@ def compute_pinv(X, y):
     ###########################################################################
     # TODO: Implement the pseudoinverse algorithm.                            #
     ###########################################################################
-    pinv_theta = np.linalg.inv(X @ X.T) @ X @ y
+    pinv_theta = (np.linalg.inv(X.T @ X)) @ X.T @ y
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -173,8 +173,9 @@ def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
     theta = theta.copy() # optional: theta outside the function will not change
     J_history = [] # Use a python list to save the loss value in every iteration
     ###########################################################################
+   
     for t in range(max_iter):
-        theta = theta - eta * (1/len(y)) * ((theta @ X - y) @ X.T)
+        theta = theta - (eta / len(y)) * (X.T @ (X @ theta - y) )
         J = compute_loss(X, y, theta)
         J_history.append(J)
         if t > 0 and abs(J - J_history[-1]) < epsilon:
@@ -210,8 +211,6 @@ def find_best_learning_rate(X_train, y_train, X_val, y_val, iterations):
         theta = np.random.random(size=2)
         theta_itr, J_history = gradient_descent_stop_condition(X_train, y_train, theta, eta, iterations)
         eta_dict[eta] = compute_loss(X_val, y_val, theta_itr)
-    print(eta_dict.keys())
-    print(eta_dict.values())
     ###########################################################################
     pass
     ###########################################################################
@@ -239,7 +238,7 @@ def forward_feature_selection(X_train, y_train, X_val, y_val, best_eta, iteratio
     """
     selected_features = []
     #####c######################################################################
-    # TODO: Implement the function and find the best eta value.             #
+    
     ###########################################################################
     pass
     ###########################################################################
