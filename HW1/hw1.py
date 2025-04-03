@@ -237,8 +237,6 @@ def forward_feature_selection(X_train, y_train, X_val, y_val, best_eta, iteratio
     - selected_features: A list of selected top 5 feature indices
     """
     selected_features = []
-    #print(X_train.shape)
-    #print(X_val.shape)
     # number of features
     m = X_train.shape[1]
     # Add bias trick
@@ -256,11 +254,9 @@ def forward_feature_selection(X_train, y_train, X_val, y_val, best_eta, iteratio
                 continue
             X_train_subset = X_train[:, selected_features + [col_feat]]
             X_val_subset = X_val[:, selected_features + [col_feat]]
-
-            #method 1 of computing Theta
-            pinv_theta = compute_pinv(X_train_subset, y_train)
+            theta_i = np.random.random(X_train_subset.shape[1]).reshape(-1,1)
             #method 2 of computing Theta
-            theta_itr, J_history = gradient_descent_stop_condition(X_train_subset, y_train, pinv_theta, best_eta, iterations)
+            theta_itr, J_history = gradient_descent_stop_condition(X_train_subset, y_train, theta_i, best_eta, iterations)
             loss = compute_loss(X_val_subset, y_val, theta_itr)
 
             if loss < best_loss:
@@ -283,11 +279,14 @@ def create_square_features(df):
     """
 
     df_poly = df.copy()
-    ###########################################################################
-    # TODO: Implement the function to add polynomial features                 #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    df_squares = df_poly ** 2
+    df_squares.columns = [f"{col}^2" for col in df_squares.columns]
+    df_poly = pd.concat([df_poly, df_squares], axis=1)
+    parwise_features = {}
+    for i in range(len(df.columns)):
+        for j in range(i+1, len(df.columns)):
+            f1, f2 = df.columns[i], df.columns[j]
+            parwise_features[f"{f1}*{f2}"] = df_poly[f1]*df_poly[f2]
+    df_pairs = pd.DataFrame(parwise_features)
+    df_poly = pd.concat([df_poly, df_pairs], axis=1)
     return df_poly
