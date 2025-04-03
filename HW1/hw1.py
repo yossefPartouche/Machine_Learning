@@ -237,13 +237,37 @@ def forward_feature_selection(X_train, y_train, X_val, y_val, best_eta, iteratio
     - selected_features: A list of selected top 5 feature indices
     """
     selected_features = []
-    #####c######################################################################
-    
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    #print(X_train.shape)
+    #print(X_val.shape)
+    # number of features
+    m = X_train.shape[1]
+    # Add bias trick
+    y_train = np.expand_dims(y_train, axis=1)
+
+
+    #first understand what format we applied the bias trick
+    # both X_Train and X_val have the bias trick applied
+    while len(selected_features) < 5:
+        best_feature = None
+        best_loss = float("inf")
+
+        for col_feat in range(m):
+            if col_feat in selected_features:
+                continue
+            X_train_subset = X_train[:, selected_features + [col_feat]]
+            X_val_subset = X_val[:, selected_features + [col_feat]]
+
+            #method 1 of computing Theta
+            pinv_theta = compute_pinv(X_train_subset, y_train)
+            #method 2 of computing Theta
+            theta_itr, J_history = gradient_descent_stop_condition(X_train_subset, y_train, pinv_theta, best_eta, iterations)
+            loss = compute_loss(X_val_subset, y_val, theta_itr)
+
+            if loss < best_loss:
+                best_loss = loss
+                best_feature = col_feat
+        selected_features.append(best_feature)
+
     return selected_features
 
 def create_square_features(df):
