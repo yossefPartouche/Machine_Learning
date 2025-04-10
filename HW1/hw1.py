@@ -242,9 +242,6 @@ def forward_feature_selection(X_train, y_train, X_val, y_val, best_eta, iteratio
     # Add bias trick
     y_train = np.expand_dims(y_train, axis=1)
 
-
-    #first understand what format we applied the bias trick
-    # both X_Train and X_val have the bias trick applied
     while len(selected_features) < 5:
         best_feature = None
         best_loss = float("inf")
