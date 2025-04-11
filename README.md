@@ -1,6 +1,10 @@
-<<<<<<< HEAD
-# Machine_Learning
+## Machine_Learning
 Learning about the basic concepts and implementation of Machine Learning
-=======
-# My First Project
->>>>>>> 580c3ba (Initial Commit)
+
+### Chapter 1: Linear Regression 
+ - Iterative Algorithm
+ - Analytical Method (Closed Form) 
+ - Tuning choice of eta
+ - Forward Feature Selection
+ - Polynomial Regression
+
