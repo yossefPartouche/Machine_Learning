@@ -123,18 +123,20 @@ class DecisionNode:
     def calc_node_pred(self):
         """
         Calculate the node's prediction.
+        We return the most commmon label in the dataSet
 
         Returns:
         - pred: the prediction of the node
         """
         pred = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        labels = self.data[:, -1]
+
+        # we extract an array of unique values 
+        # and corrresponding count for each unqiue values
+        binary_labels, counts = np.unique(labels, return_counts=True)
+
+        pred = binary_labels[np.argmax(counts)]
+
         return pred
         
     def add_child(self, node, val):
@@ -143,13 +145,8 @@ class DecisionNode:
 
         This function has no return value
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        self.children.append(node)
+        self.children_values.append(val)
     
     def goodness_of_split(self, feature):
         """
@@ -165,13 +162,39 @@ class DecisionNode:
         """
         goodness = 0
         groups = {} # groups[feature_value] = data_subset
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+
+        #Extracts all possible values of a perticular feature
+        feature_val = np.unique(self.data[:, feature])
+
+        for value in feature_val:
+            # Proprossing our S_v
+            # This is known as Boolean indexing technique to extract our data. 
+            groups[value] = self.data[self.data[:, feature]== value]
+        if self.gain_ratio:
+            s_impurity = calc_entropy(self.data)
+        else: 
+            s_impurity = self.impurity_func(self.data)
+        # This is the proportion of each subset that will be multiplied
+        sum_weighted_Sv = 0
+        splitInfo = 0
+        for value in feature_val:
+            S_v = groups[value]
+            # |S_v| / |S|
+            weight = len(S_v) / len(self.data)
+
+            if self.gain_ratio:
+                impurity = calc_entropy(S_v)
+                splitInfo -= weight * np.log2(weight) if weight > 0 else 0
+            else:
+                impurity = self.impurity_func(S_v)
+            
+            sum_weighted_Sv += weight * impurity 
+        impurity_reduct = s_impurity - sum_weighted_Sv
+        if self.gain_ratio:
+            # GainRation(S,A) = goodness
+            goodness = impurity_reduct/ splitInfo if splitInfo > 0 else 0
+        else:
+            goodness = impurity_reduct
         return goodness, groups
         
     def calc_feature_importance(self, n_total_sample):
