@@ -72,14 +72,14 @@ def calc_gini(data):
     Returns:
     - gini: The gini impurity value.
     """
-    gini = 0.0
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    labels = data[:, -1]
+    _, counts = np.unique(labels, return_counts=True)
+    #Also probabilities
+    p = counts/ len(labels)
+
+    # Calculate Gini impurity: 1 - Σ(p_i^2)
+    gini = 1 - np.sum(p**2)
+
     return gini
 
 def calc_entropy(data):
@@ -93,13 +93,11 @@ def calc_entropy(data):
     - entropy: The entropy value.
     """
     entropy = 0.0
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    labels = data[:, -1]
+    _, counts = np.unique(labels, return_counts=True)
+    p = counts/ len(labels)
+    entropy = -np.sum(p[p>0]*np.log2(p[p>0]))
+
     return entropy
 
 class DecisionNode:
@@ -163,7 +161,7 @@ class DecisionNode:
         goodness = 0
         groups = {} # groups[feature_value] = data_subset
 
-        #Extracts all possible values of a perticular feature
+        # Extracts all possible values of a perticular feature
         feature_val = np.unique(self.data[:, feature])
 
         for value in feature_val:
