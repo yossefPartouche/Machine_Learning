@@ -72,14 +72,16 @@ def calc_gini(data):
     Returns:
     - gini: The gini impurity value.
     """
-    labels = data[:, -1]
-    _, counts = np.unique(labels, return_counts=True)
-    #Also probabilities
-    p = counts/ len(labels)
-
-    # Calculate Gini impurity: 1 - Σ(p_i^2)
-    gini = 1 - np.sum(p**2)
-
+    gini = 0.0
+    # Extract the label set 
+    label = data[:, -1]
+    # count freq of each class 
+    values, counts = np.unique(label, return_counts=True)
+    total_count = counts[0] + counts[1]
+    # convert to proportion/probability
+    proportions = counts/total_count
+    # apply Gini Formula
+    gini = 1 - np.sum(proportions**2)
     return gini
 
 def calc_entropy(data):
@@ -93,10 +95,16 @@ def calc_entropy(data):
     - entropy: The entropy value.
     """
     entropy = 0.0
-    labels = data[:, -1]
-    _, counts = np.unique(labels, return_counts=True)
-    p = counts/ len(labels)
-    entropy = -np.sum(p[p>0]*np.log2(p[p>0]))
+    # Extract the label set
+    label = data[:, -1]
+    # count freq of each class
+    values, counts = np.unique(label,return_counts=True)
+    total_count = counts[0] + counts[1]
+    # convert to proportions/probabilities
+    p= counts/total_count
+    # apply Entropy Formula
+    entropy = np.sum(p*np.log2(p))
+    entropy = - entropy
 
     return entropy
 
@@ -121,20 +129,16 @@ class DecisionNode:
     def calc_node_pred(self):
         """
         Calculate the node's prediction.
-        We return the most commmon label in the dataSet
 
         Returns:
         - pred: the prediction of the node
         """
         pred = None
-        labels = self.data[:, -1]
-
-        # we extract an array of unique values 
-        # and corrresponding count for each unqiue values
-        binary_labels, counts = np.unique(labels, return_counts=True)
-
-        pred = binary_labels[np.argmax(counts)]
-
+        # extract the label set 
+        label = self.data[:, -1]
+        # count freq of each class
+        values, count = np.unique(label, return_counts=True)
+        pred = values[np.argmax(count)]
         return pred
         
     def add_child(self, node, val):
@@ -146,6 +150,27 @@ class DecisionNode:
         self.children.append(node)
         self.children_values.append(val)
     
+    def gain_ratio(s_size, groups, s_impurity):
+        goodness = 0.0
+        info_gain = 0.0
+        split_info = 0.0
+        imp_weighted = 0.0
+        for _, s_v in groups.items():
+            imp_weighted += (len(s_v) / s_size) * calc_entropy(s_v)
+            split_info += (len(s_v)/s_size)*np.log2(len(s_v)/s_size)
+        split_info = -split_info
+        info_gain = s_impurity - imp_weighted
+        goodness = info_gain/split_info
+        return goodness
+
+    def gos_helper(s_size, groups, s_impurity):
+        imp_weighted = 0.0
+        for _, s_v in groups.items():
+            imp_weighted += (len(s_v) / s_size) * calc_entropy(s_v)
+
+        goodness = s_impurity - imp_weighted
+        return goodness
+
     def goodness_of_split(self, feature):
         """
         Calculate the goodness of split of a dataset given a feature and impurity function.
@@ -156,43 +181,29 @@ class DecisionNode:
         Returns:
         - goodness: the goodness of split
         - groups: a dictionary holding the data after splitting 
-                  according to the feature values.
+            according to the feature values.
         """
         goodness = 0
         groups = {} # groups[feature_value] = data_subset
-
-        # Extracts all possible values of a perticular feature
-        feature_val = np.unique(self.data[:, feature])
-
-        for value in feature_val:
-            # Proprossing our S_v
-            # This is known as Boolean indexing technique to extract our data. 
-            groups[value] = self.data[self.data[:, feature]== value]
+        # Create focused array
+        data = np.column_stack((self.data[:, feature], self.data[:, -1]))
+        # store number of samples (|S|)
+        s_size = data.shape[0]
+        # calculate impurity of the feature set as a whole
+        s_impurity = calc_entropy(data)
+        # split the feature set into subsets according to feature values
+        for row in data:
+            val = row[0]
+            if val not in groups:
+                groups[val] = []
+            groups[val].append(row)
+        # Convert lists to NumPy arrays
+        groups = {k: np.array(v) for k, v in groups.items()}
         if self.gain_ratio:
-            s_impurity = calc_entropy(self.data)
+            goodness = self.gain_ratio(s_size, groups, s_impurity)
         else: 
-            s_impurity = self.impurity_func(self.data)
-        # This is the proportion of each subset that will be multiplied
-        sum_weighted_Sv = 0
-        splitInfo = 0
-        for value in feature_val:
-            S_v = groups[value]
-            # |S_v| / |S|
-            weight = len(S_v) / len(self.data)
+            goodness = self.gos_helper(s_size, groups, s_impurity)
 
-            if self.gain_ratio:
-                impurity = calc_entropy(S_v)
-                splitInfo -= weight * np.log2(weight) if weight > 0 else 0
-            else:
-                impurity = self.impurity_func(S_v)
-            
-            sum_weighted_Sv += weight * impurity 
-        impurity_reduct = s_impurity - sum_weighted_Sv
-        if self.gain_ratio:
-            # GainRation(S,A) = goodness
-            goodness = impurity_reduct/ splitInfo if splitInfo > 0 else 0
-        else:
-            goodness = impurity_reduct
         return goodness, groups
         
     def calc_feature_importance(self, n_total_sample):
@@ -353,7 +364,7 @@ def chi_pruning(X_train, X_test):
     #                             END OF YOUR CODE                            #
     ###########################################################################
         
-    return chi_training_acc, chi_testing_acc, depth
+    return chi_training_acc, chi_validation_acc, depth
 
 
 def count_nodes(node):
