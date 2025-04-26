@@ -216,13 +216,9 @@ class DecisionNode:
         This function has no return value - it stores the feature importance in 
         self.feature_importance
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        goodness = self.goodness_of_split(self, self.feature)
+        size = self.data.shape[0]
+        self.feature_importance = (size/n_total_sample)*goodness
     
     def split(self):
         """
