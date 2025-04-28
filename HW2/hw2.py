@@ -216,15 +216,33 @@ class DecisionNode:
 
         This function has no return value
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
-
-                    
+        best_goodness = -1
+        best_feature = None
+        best_groups = None
+        num_features = self.data.shape[1] - 1
+        # find best feature to split
+        for col_idx in range(num_features):
+            goodness, groups = self.goodness_of_split(col_idx) # gos recieves feature col idx as input
+            # Check if the goodness is larger than the current best
+            if goodness > best_goodness:
+                best_goodness = goodness
+                best_feature = col_idx
+                best_groups = groups
+        self.feature = best_feature
+        for val, subset in best_groups.items():
+            # Create a new DecisionNode for each subset
+            child = DecisionNode(
+                data=subset,
+                impurity_func=self.impurity_func,
+                feature=-1, # reset feature for child node
+                depth=self.depth + 1,
+                chi=self.chi,
+                max_depth=self.max_depth,
+                gain_ratio=self.gain_ratio
+            )
+            # Add the child to the current node
+            self.add_child(child, val)
+            
 class DecisionTree:
     def __init__(self, data, impurity_func, feature=-1, chi=1, max_depth=1000, gain_ratio=False):
         self.data = data # the training data used to construct the tree
