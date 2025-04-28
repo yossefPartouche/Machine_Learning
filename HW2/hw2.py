@@ -168,7 +168,8 @@ class DecisionNode:
         s_size = self.data.shape[0]
         # Extract the feature values and their sizes
         feature_values, sizes = np.unique(self.data[:, feature], return_counts=True)
-        # # Gain ratio flag is set to false
+        
+        # Gain ratio flag is set to false
         if not self.gain_ratio:
             # calculate impurity of the feature set as a whole
             s_impurity = self.impurity_func(self.data)
@@ -192,6 +193,7 @@ class DecisionNode:
                 groups.update({val: subset})
                 split_info += (subset_size / s_size) * np.log2(subset_size / s_size)
             goodness = info_gain / (- split_info)
+
         return goodness, groups
         
     def calc_feature_importance(self, n_total_sample):
@@ -213,28 +215,35 @@ class DecisionNode:
         Splits the current node according to the self.impurity_func. This function finds
         the best feature to split according to and create the corresponding children.
         This function should support pruning according to self.chi and self.max_depth.
-
         This function has no return value
         """
+        # Check if the node is a leaf
+        if self.depth >= self.max_depth:
+            self.terminal = True
+            return
+        
+        # Check if the node is a leaf
         best_goodness = -1
         best_feature = None
         best_groups = None
         num_features = self.data.shape[1] - 1
+        
         # find best feature to split
         for col_idx in range(num_features):
             goodness, groups = self.goodness_of_split(col_idx) # gos recieves feature col idx as input
+            
             # Check if the goodness is larger than the current best
             if goodness > best_goodness:
                 best_goodness = goodness
                 best_feature = col_idx
                 best_groups = groups
         self.feature = best_feature
+        
         for val, subset in best_groups.items():
             # Create a new DecisionNode for each subset
             child = DecisionNode(
                 data=subset,
                 impurity_func=self.impurity_func,
-                feature=-1, # reset feature for child node
                 depth=self.depth + 1,
                 chi=self.chi,
                 max_depth=self.max_depth,
@@ -264,13 +273,34 @@ class DecisionTree:
         This function has no return value
         """
         self.root = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        self.root = DecisionNode(
+            data=self.data,
+            impurity_func=self.impurity_func,
+            chi=self.chi,
+            max_depth=self.max_depth,
+            gain_ratio=self.gain_ratio
+        )
+        # Initialize a queue with the root node
+        queue = [self.root]
+        
+        # While queue is not empty
+        while len(queue) > 0:
+            # Dequeue the first node
+            node = queue.pop(0)
+            labels = node.data[:, -1]
+
+            # If all samples have same class label y, designate node as a leaf
+            if len(np.unique(labels)) == 1:
+                node.terminal = True
+                continue
+            
+            node.split()
+            node.calc_feature_importance(self.data.shape[0])
+            
+            # If the node is not a leaf, add its children to the queue
+            if not node.terminal:
+                for child in node.children:
+                    queue.append(child)
 
     def predict(self, instance):
         """
