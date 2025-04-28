@@ -314,6 +314,7 @@ class DecisionTree:
         """
         pred = None
         node = self.root
+        
         # Traverse the tree until a leaf node is reached
         while not node.terminal:
             # Get the feature value for the current node
@@ -324,6 +325,7 @@ class DecisionTree:
                 node = node.children[index]
             else:
                 break
+
         return node.pred
 
     def calc_accuracy(self, dataset):
@@ -336,13 +338,17 @@ class DecisionTree:
         Output: the accuracy of the decision tree on the given dataset (%).
         """
         accuracy = 0
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        count_correct = 0
+
+        for instance in dataset:
+            # Predict the label of the row
+            pred = self.predict(instance)
+            # Check if the prediction is correct
+            if pred == instance[-1]:
+                count_correct += 1
+
+        accuracy = (count_correct / dataset.shape[0]) * 100
+
         return accuracy
         
 
