@@ -76,8 +76,8 @@ def calc_gini(data):
     # Extract the label set 
     label = data[:, -1]
     # count freq of each class 
-    values, counts = np.unique(label, return_counts=True)
-    total_count = counts[0] + counts[1]
+    _, counts = np.unique(label, return_counts=True)
+    total_count = label.shape[0]
     # convert to proportion/probability
     proportions = counts/total_count
     # apply Gini Formula
@@ -98,8 +98,8 @@ def calc_entropy(data):
     # Extract the label set
     label = data[:, -1]
     # count freq of each class
-    values, counts = np.unique(label,return_counts=True)
-    total_count = counts[0] + counts[1]
+    _, counts = np.unique(label,return_counts=True)
+    total_count = label.shape[0]
     # convert to proportions/probabilities
     p= counts/total_count
     # apply Entropy Formula
@@ -150,27 +150,6 @@ class DecisionNode:
         self.children.append(node)
         self.children_values.append(val)
     
-    def gain_ratio(s_size, groups, s_impurity):
-        goodness = 0.0
-        info_gain = 0.0
-        split_info = 0.0
-        imp_weighted = 0.0
-        for _, s_v in groups.items():
-            imp_weighted += (len(s_v) / s_size) * calc_entropy(s_v)
-            split_info += (len(s_v)/s_size)*np.log2(len(s_v)/s_size)
-        split_info = -split_info
-        info_gain = s_impurity - imp_weighted
-        goodness = info_gain/split_info
-        return goodness
-
-    def gos_helper(s_size, groups, s_impurity):
-        imp_weighted = 0.0
-        for _, s_v in groups.items():
-            imp_weighted += (len(s_v) / s_size) * calc_entropy(s_v)
-
-        goodness = s_impurity - imp_weighted
-        return goodness
-
     def goodness_of_split(self, feature):
         """
         Calculate the goodness of split of a dataset given a feature and impurity function.
@@ -185,25 +164,34 @@ class DecisionNode:
         """
         goodness = 0
         groups = {} # groups[feature_value] = data_subset
-        # Create focused array
-        data = np.column_stack((self.data[:, feature], self.data[:, -1]))
         # store number of samples (|S|)
-        s_size = data.shape[0]
-        # calculate impurity of the feature set as a whole
-        s_impurity = calc_entropy(data)
-        # split the feature set into subsets according to feature values
-        for row in data:
-            val = row[0]
-            if val not in groups:
-                groups[val] = []
-            groups[val].append(row)
-        # Convert lists to NumPy arrays
-        groups = {k: np.array(v) for k, v in groups.items()}
-        if self.gain_ratio:
-            goodness = self.gain_ratio(s_size, groups, s_impurity)
-        else: 
-            goodness = self.gos_helper(s_size, groups, s_impurity)
-
+        s_size = self.data.shape[0]
+        # Extract the feature values and their sizes
+        feature_values, sizes = np.unique(self.data[:, feature], return_counts=True)
+        # # Gain ratio flag is set to false
+        if not self.gain_ratio:
+            # calculate impurity of the feature set as a whole
+            s_impurity = self.impurity_func(self.data)
+            imp_weighted = 0.0
+            for val, subset_size in zip(feature_values, sizes):
+                # Create a subset of the data for each feature value
+                subset = self.data[self.data[:, feature] == val]
+                groups.update({val: subset})
+                # Calculate the impurity of the subset
+                subset_impurity = self.impurity_func(subset) ##### must use impurity_func not entropy
+                # Calculate the weighted impurity
+                imp_weighted += (subset_size / s_size) * subset_impurity
+            goodness = s_impurity - imp_weighted
+        # Gain ratio flag is set to true
+        else:
+            info_gain = calc_entropy(self.data)
+            split_info = 0
+            for val, subset_size in zip(feature_values, sizes):
+                # Create a subset of the data for each feature value
+                subset = self.data[self.data[:, feature] == val]
+                groups.update({val: subset})
+                split_info += (subset_size / s_size) * np.log2(subset_size / s_size)
+            goodness = info_gain / (- split_info)
         return goodness, groups
         
     def calc_feature_importance(self, n_total_sample):
