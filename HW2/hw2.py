@@ -313,13 +313,17 @@ class DecisionTree:
         Output: the prediction of the instance.
         """
         pred = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        node = self.root
+        # Traverse the tree until a leaf node is reached
+        while not node.terminal:
+            # Get the feature value for the current node
+            feature_value = instance[node.feature]
+            # Find the child node corresponding to the feature value
+            if feature_value in node.children_values:
+                index = node.children_values.index(feature_value)
+                node = node.children[index]
+            else:
+                break
         return node.pred
 
     def calc_accuracy(self, dataset):
