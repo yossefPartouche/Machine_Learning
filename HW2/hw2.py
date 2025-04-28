@@ -206,7 +206,7 @@ class DecisionNode:
         This function has no return value - it stores the feature importance in 
         self.feature_importance
         """
-        goodness = self.goodness_of_split(self, self.feature)
+        goodness, _ = self.goodness_of_split(self.feature)
         size = self.data.shape[0]
         self.feature_importance = (size/n_total_sample)*goodness
     
