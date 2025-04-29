@@ -238,6 +238,19 @@ class DecisionNode:
                 best_feature = col_idx
                 best_groups = groups
         self.feature = best_feature
+
+        # The chi-squared test should be added here
+        if best_feature is not None and self.chi < 1:
+            dog = len(best_groups)-1
+
+            #check if we can find a threshold
+            if dog in chi_table and self.chi in chi_table[dog]:
+                threshold = chi_table[dog][self.chi]
+
+                if self.chi_square_test(best_groups) < threshold:
+                    self.terminal = True
+                    return
+
         
         for val, subset in best_groups.items():
             # Create a new DecisionNode for each subset
@@ -251,6 +264,31 @@ class DecisionNode:
             )
             # Add the child to the current node
             self.add_child(child, val)
+
+    def chi_square_test(self, groups):
+        chi_square_value = 0
+
+        total_samples = self.data.shape[0]
+        class_values, class_counts = np.unique(self.data[:, -1], return_counts=True)
+        overall_class_probs = {class_val: count/total_samples for class_val, count in zip(class_values, class_counts)}
+
+        #Calculate chi-square statistic
+        for val, subset in groups.items():
+            subset_size = subset.shape[0]
+
+            # For each class
+            for class_val in class_values:
+                # Observed count
+                observed = np.sum(subset[:, -1] == class_val)
+                
+                # Expected count (what would be expected by chance)
+                expected = subset_size * overall_class_probs[class_val]
+                
+                # Add to chi-square statistic if expected count is non-zero
+                if expected > 0:
+                    chi_square_value += ((observed - expected) ** 2) / expected
+        return chi_square_value
+
             
 class DecisionTree:
     def __init__(self, data, impurity_func, feature=-1, chi=1, max_depth=1000, gain_ratio=False):
@@ -368,13 +406,12 @@ def depth_pruning(X_train, X_validation):
     validation  = []
     root = None
     for max_depth in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        t = DecisionTree(data=X_train, impurity_func=calc_gini, feature=-1, chi=1, max_depth=max_depth, gain_ratio=False)
+        t.build_tree()
+        training_acc = t.calc_accuracy(X_train)
+        training.append(training_acc)
+        validate_acc = t.calc_accuracy(X_validation)
+        validation.append(validate_acc)
     return training, validation
 
 
@@ -398,15 +435,42 @@ def chi_pruning(X_train, X_test):
     chi_validation_acc  = []
     depth = []
 
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    for chi_val in [1, 0.5, 0.25, 0.1, 0.05, 0.0001]:
+        t = DecisionTree(data=X_train, impurity_func=calc_gini, chi= chi_val)
+        t.build_tree()
+        training_acc = t.calc_accuracy(X_train)
+        chi_training_acc.append(training_acc)
+        validate_acc = t.calc_accuracy(X_test)
+        chi_validation_acc.append(validate_acc)
         
+        max_depth = find_max_depth(t.root)
+        depth.append(max_depth)
+
     return chi_training_acc, chi_validation_acc, depth
+
+def find_max_depth(node):
+    """
+    Find the maximum depth of a tree or subtree.
+    
+    Input:
+    - node: The root of the tree or subtree
+    
+    Output:
+    - max_depth: The maximum depth of the tree
+    """
+    if node is None:
+        return 0
+    
+    if node.terminal:  # If it's a leaf node
+        return node.depth
+    
+    # Find the maximum depth of all children
+    if not node.children:  # No children
+        return node.depth
+        
+    # Find the maximum depth among all children
+    max_child_depth = max(find_max_depth(child) for child in node.children)
+    return max_child_depth
 
 
 def count_nodes(node):
