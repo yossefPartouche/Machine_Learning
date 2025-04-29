@@ -192,7 +192,10 @@ class DecisionNode:
                 subset = self.data[self.data[:, feature] == val]
                 groups.update({val: subset})
                 split_info += (subset_size / s_size) * np.log2(subset_size / s_size)
-            goodness = info_gain / (- split_info)
+            if split_info == 0:
+                goodness = 0
+            else:
+                goodness = info_gain / (- split_info)
 
         return goodness, groups
         
