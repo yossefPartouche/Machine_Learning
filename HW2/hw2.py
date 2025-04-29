@@ -443,35 +443,22 @@ def chi_pruning(X_train, X_test):
         validate_acc = t.calc_accuracy(X_test)
         chi_validation_acc.append(validate_acc)
         
-        max_depth = find_max_depth(t.root)
-        depth.append(max_depth)
+        def find_max_depth(node):
+            if node is None:
+                return 0
+            
+            if node.terminal: # If it's a leaf node
+                return node.depth
+            
+            # Find the maximum depth of all children
+            if not node.children: 
+                return node.depth
+            
+            return max(find_max_depth(child) for child in node.children)
+        
+        depth.append(find_max_depth(t.root))
 
     return chi_training_acc, chi_validation_acc, depth
-
-def find_max_depth(node):
-    """
-    Find the maximum depth of a tree or subtree.
-    
-    Input:
-    - node: The root of the tree or subtree
-    
-    Output:
-    - max_depth: The maximum depth of the tree
-    """
-    if node is None:
-        return 0
-    
-    if node.terminal:  # If it's a leaf node
-        return node.depth
-    
-    # Find the maximum depth of all children
-    if not node.children:  # No children
-        return node.depth
-        
-    # Find the maximum depth among all children
-    max_child_depth = max(find_max_depth(child) for child in node.children)
-    return max_child_depth
-
 
 def count_nodes(node):
     """
@@ -482,13 +469,11 @@ def count_nodes(node):
  
     Output: the number of node in the tree.
     """
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    if node is None:
+        return 0
+    n_nodes = 1
+    for child in node.children:
+        count += count_nodes(child)
     return n_nodes
 
 
