@@ -473,7 +473,7 @@ def count_nodes(node):
         return 0
     n_nodes = 1
     for child in node.children:
-        count += count_nodes(child)
+        n_nodes += count_nodes(child)
     return n_nodes
 
 
