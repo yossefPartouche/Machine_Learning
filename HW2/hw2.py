@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 ### Chi square table values ###
 # The first key is the degree of freedom 
@@ -109,8 +108,6 @@ def calc_entropy(data):
     return entropy
 
 class DecisionNode:
-
-    
     def __init__(self, data, impurity_func, feature=-1,depth=0, chi=1, max_depth=1000, gain_ratio=False):
         
         self.data = data # the data instances associated with the node
@@ -139,6 +136,7 @@ class DecisionNode:
         # count freq of each class
         values, count = np.unique(label, return_counts=True)
         pred = values[np.argmax(count)]
+        
         return pred
         
     def add_child(self, node, val):
@@ -408,13 +406,15 @@ def depth_pruning(X_train, X_validation):
     training = []
     validation  = []
     root = None
+    
     for max_depth in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
-        t = DecisionTree(data=X_train, impurity_func=calc_gini, feature=-1, chi=1, max_depth=max_depth, gain_ratio=False)
+        t = DecisionTree(data=X_train, impurity_func=calc_gini, max_depth=max_depth)
         t.build_tree()
         training_acc = t.calc_accuracy(X_train)
         training.append(training_acc)
         validate_acc = t.calc_accuracy(X_validation)
         validation.append(validate_acc)
+    
     return training, validation
 
 
@@ -474,9 +474,12 @@ def count_nodes(node):
     """
     if node is None:
         return 0
+    
     n_nodes = 1
+    
     for child in node.children:
         n_nodes += count_nodes(child)
+    
     return n_nodes
 
 
