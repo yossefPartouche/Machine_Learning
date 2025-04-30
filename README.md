@@ -8,3 +8,10 @@ Learning about the basic concepts and implementation of Machine Learning
  - Forward Feature Selection
  - Polynomial Regression
 
+### Chapter 1: Decision Trees
+ - Classification
+ - Decision Trees
+ - Impurity/Uncertainty Measure
+ - Entropy and Information Gain
+ - Continuous Features
+ - Pruning Techniques/ Overfitting
