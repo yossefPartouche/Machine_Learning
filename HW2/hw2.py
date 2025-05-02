@@ -409,14 +409,13 @@ def depth_pruning(X_train, X_validation):
     validation  = []
     root = None
     for max_depth in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
-        t = DecisionTree(data=X_train, impurity_func=calc_gini, feature=-1, chi=1, max_depth=max_depth, gain_ratio=False)
+        t = DecisionTree(data=X_train, impurity_func=calc_gini, gain_ratio=False, max_depth=max_depth)
         t.build_tree()
         training_acc = t.calc_accuracy(X_train)
         training.append(training_acc)
         validate_acc = t.calc_accuracy(X_validation)
         validation.append(validate_acc)
     return training, validation
-
 
 def chi_pruning(X_train, X_test):
 
