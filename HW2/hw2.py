@@ -102,8 +102,7 @@ def calc_entropy(data):
     # convert to proportions/probabilities
     p= counts/total_count
     # apply Entropy Formula
-    entropy = np.sum(p*np.log2(p))
-    entropy = - entropy
+    entropy = -np.sum(np.where(p > 0, p*np.log2(p), 0))
 
     return entropy
 
@@ -167,34 +166,54 @@ class DecisionNode:
         # Extract the feature values and their sizes
         feature_values, sizes = np.unique(self.data[:, feature], return_counts=True)
         
+        # Create the groups dictionary and prepare for calculations
+        for val in feature_values:
+            subset = self.data[self.data[:, feature] == val]
+            groups[val] = subset
+        
+        # Calculate impurity of the parent node
+        parent_impurity = self.impurity_func(self.data)
+        
         # Gain ratio flag is set to false
         if not self.gain_ratio:
-            # calculate impurity of the feature set as a whole
-            s_impurity = self.impurity_func(self.data)
-            imp_weighted = 0.0
-            for val, subset_size in zip(feature_values, sizes):
-                # Create a subset of the data for each feature value
-                subset = self.data[self.data[:, feature] == val]
-                groups.update({val: subset})
-                # Calculate the impurity of the subset
-                subset_impurity = self.impurity_func(subset) ##### must use impurity_func not entropy
-                # Calculate the weighted impurity
-                imp_weighted += (subset_size / s_size) * subset_impurity
-            goodness = s_impurity - imp_weighted
+            # Calculate weighted impurity of children
+            weighted_impurity = 0.0
+            for val, subset in groups.items():
+                subset_size = subset.shape[0]
+                subset_impurity = self.impurity_func(subset)
+                weighted_impurity += (subset_size / s_size) * subset_impurity
+                
+            # Calculate goodness as impurity reduction
+            goodness = parent_impurity - weighted_impurity
         # Gain ratio flag is set to true
         else:
-            info_gain = calc_entropy(self.data)
-            split_info = 0
-            for val, subset_size in zip(feature_values, sizes):
-                # Create a subset of the data for each feature value
-                subset = self.data[self.data[:, feature] == val]
-                groups.update({val: subset})
-                split_info += (subset_size / s_size) * np.log2(subset_size / s_size)
+            # For gain ratio, we need to use entropy even if impurity_func is different
+            parent_entropy = calc_entropy(self.data)
+            
+            # Calculate information gain
+            weighted_entropy = 0.0
+            split_info = 0.0
+            
+            for val, subset in groups.items():
+                subset_size = subset.shape[0]
+                proportion = subset_size / s_size
+                
+                # Calculate entropy for this subset
+                subset_entropy = calc_entropy(subset)
+                weighted_entropy += proportion * subset_entropy
+                
+                # Calculate split information
+                if proportion > 0:  # Avoid log(0)
+                    split_info -= proportion * np.log2(proportion)
+            
+            # Calculate information gain
+            info_gain = parent_entropy - weighted_entropy
+            
+            # Calculate gain ratio (protect against division by zero)
             if split_info == 0:
                 goodness = 0
             else:
-                goodness = info_gain / (- split_info)
-
+                goodness = info_gain / split_info
         return goodness, groups
         
     def calc_feature_importance(self, n_total_sample):
@@ -224,8 +243,7 @@ class DecisionNode:
             self.terminal = True
             return
         
-        # Check if the node is a leaf
-        best_goodness = -np.inf
+        best_goodness = 0
         best_feature = None
         best_groups = None
         num_features = self.data.shape[1] - 1
