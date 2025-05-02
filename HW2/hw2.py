@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 
 ### Chi square table values ###
 # The first key is the degree of freedom 
@@ -109,8 +108,6 @@ def calc_entropy(data):
     return entropy
 
 class DecisionNode:
-
-    
     def __init__(self, data, impurity_func, feature=-1,depth=0, chi=1, max_depth=1000, gain_ratio=False):
         
         self.data = data # the data instances associated with the node
@@ -139,6 +136,7 @@ class DecisionNode:
         # count freq of each class
         values, count = np.unique(label, return_counts=True)
         pred = values[np.argmax(count)]
+        
         return pred
         
     def add_child(self, node, val):
@@ -221,12 +219,13 @@ class DecisionNode:
         This function has no return value
         """
         # Check if the node is a leaf
-        if self.depth >= self.max_depth:
+        labels = self.data[:, -1]
+        if len(np.unique(labels)) <= 1 or self.depth >= self.max_depth:
             self.terminal = True
             return
         
         # Check if the node is a leaf
-        best_goodness = -1
+        best_goodness = -np.inf
         best_feature = None
         best_groups = None
         num_features = self.data.shape[1] - 1
@@ -240,17 +239,24 @@ class DecisionNode:
                 best_goodness = goodness
                 best_feature = col_idx
                 best_groups = groups
+
+        # if no improvement, mark as terminal
+        if best_feature is None or best_goodness <= 0:
+            self.terminal = True
+            return
+        
         self.feature = best_feature
 
-        # The chi-squared test should be added here
-        if best_feature is not None and self.chi < 1:
-            dog = len(best_groups)-1
+        if self.chi < 1:
+            feature_vals = list(best_groups.keys())
+            labels, _ = np.unique(self.data[:, -1], return_counts=True)
+            dof = (len(feature_vals) - 1) * (len(labels) - 1) # degree of freedom
 
             #check if we can find a threshold
-            if dog in chi_table and self.chi in chi_table[dog]:
-                threshold = chi_table[dog][self.chi]
-
-                if self.chi_square_test(best_groups) < threshold:
+            if dof > 0 and dof in chi_table and self.chi in chi_table[dof]:
+                threshold = chi_table[dof][self.chi]
+                chi_sq = self.chi_square_test(best_groups)
+                if chi_sq < threshold:
                     self.terminal = True
                     return
 
@@ -269,14 +275,13 @@ class DecisionNode:
             self.add_child(child, val)
 
     def chi_square_test(self, groups):
-        chi_square_value = 0
-
         total_samples = self.data.shape[0]
         class_values, class_counts = np.unique(self.data[:, -1], return_counts=True)
-        overall_class_probs = {class_val: count/total_samples for class_val, count in zip(class_values, class_counts)}
+        overall_class_probs = {class_val: count / total_samples for class_val, count in zip(class_values, class_counts)}
 
+        chi_square_value = 0.0
         #Calculate chi-square statistic
-        for val, subset in groups.items():
+        for subset in groups.values():
             subset_size = subset.shape[0]
 
             # For each class
@@ -313,7 +318,6 @@ class DecisionTree:
 
         This function has no return value
         """
-        self.root = None
         self.root = DecisionNode(
             data=self.data,
             impurity_func=self.impurity_func,
@@ -321,11 +325,12 @@ class DecisionTree:
             max_depth=self.max_depth,
             gain_ratio=self.gain_ratio
         )
+
         # Initialize a queue with the root node
         queue = [self.root]
         
         # While queue is not empty
-        while len(queue) > 0:
+        while queue:
             # Dequeue the first node
             node = queue.pop(0)
             labels = node.data[:, -1]
@@ -340,8 +345,7 @@ class DecisionTree:
             
             # If the node is not a leaf, add its children to the queue
             if not node.terminal:
-                for child in node.children:
-                    queue.append(child)
+                queue.extend(node.children)
 
     def predict(self, instance):
         """
@@ -391,7 +395,6 @@ class DecisionTree:
         accuracy = (count_correct / dataset.shape[0]) * 100
 
         return accuracy
-        
 
 def depth_pruning(X_train, X_validation):
     """
@@ -408,14 +411,17 @@ def depth_pruning(X_train, X_validation):
     training = []
     validation  = []
     root = None
+    
     for max_depth in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
-        t = DecisionTree(data=X_train, impurity_func=calc_gini, gain_ratio=False, max_depth=max_depth)
+        t = DecisionTree(data=X_train, impurity_func=calc_gini, max_depth=max_depth)
         t.build_tree()
         training_acc = t.calc_accuracy(X_train)
         training.append(training_acc)
         validate_acc = t.calc_accuracy(X_validation)
         validation.append(validate_acc)
+    
     return training, validation
+
 
 def chi_pruning(X_train, X_test):
 
@@ -433,6 +439,11 @@ def chi_pruning(X_train, X_test):
     - chi_validation_acc: the validation accuracy per chi value
     - depth: the tree depth for each chi value
     """
+    def find_max_depth(node):
+            if node.terminal or not node.children:
+                return node.depth
+            return max(find_max_depth(child) for child in node.children)
+    
     chi_training_acc = []
     chi_validation_acc  = []
     depth = []
@@ -444,20 +455,6 @@ def chi_pruning(X_train, X_test):
         chi_training_acc.append(training_acc)
         validate_acc = t.calc_accuracy(X_test)
         chi_validation_acc.append(validate_acc)
-        
-        def find_max_depth(node):
-            if node is None:
-                return 0
-            
-            if node.terminal: # If it's a leaf node
-                return node.depth
-            
-            # Find the maximum depth of all children
-            if not node.children: 
-                return node.depth
-            
-            return max(find_max_depth(child) for child in node.children)
-        
         depth.append(find_max_depth(t.root))
 
     return chi_training_acc, chi_validation_acc, depth
@@ -473,9 +470,12 @@ def count_nodes(node):
     """
     if node is None:
         return 0
+    
     n_nodes = 1
+    
     for child in node.children:
         n_nodes += count_nodes(child)
+    
     return n_nodes
 
 
