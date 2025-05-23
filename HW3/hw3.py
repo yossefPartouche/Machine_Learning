@@ -7,16 +7,13 @@ def poisson_log_pmf(k, rate):
 
     return the log pmf value for instance k given the rate
     """
-    log_p = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    log_p = 0.0
+    for sample in k:
+        factorial = 1
+        for i in range(1, sample + 1):
+            factorial *= i
+        log_p += sample * np.log(rate) - rate - np.log(factorial)
     return log_p
-
 
 def possion_analytic_mle(samples):
     """
@@ -24,14 +21,7 @@ def possion_analytic_mle(samples):
 
     return: the rate that maximizes the likelihood
     """
-    mean = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    mean = np.sum(samples)/ len(samples)
     return mean
 
 def possion_confidence_interval(lambda_mle, n, alpha=0.05):
@@ -44,15 +34,9 @@ def possion_confidence_interval(lambda_mle, n, alpha=0.05):
     """
     # Use norm.ppf to compute the inverse of the normal CDF
     from scipy.stats import norm
-    lower_bound = None
-    upper_bound = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    lower_bound = lambda_mle - np.sqrt(lambda_mle/n) * norm.ppf(1 - alpha/2)
+    upper_bound = lambda_mle + np.sqrt(lambda_mle/n) * norm.ppf(1 - alpha/2)
+
     return lower_bound, upper_bound
 
 def get_poisson_log_likelihoods(samples, rates):
@@ -62,14 +46,7 @@ def get_poisson_log_likelihoods(samples, rates):
 
     return: 1d numpy array, where each value represent that log-likelihood value of rates[i]
     """
-    likelihoods = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    likelihoods = np.array([poisson_log_pmf(samples, rate)for rate in rates])
     return likelihoods
 
 class conditional_independence():
@@ -82,35 +59,35 @@ class conditional_independence():
         self.C = {0: 0.5, 1: 0.5}  # P(C=c)
 
         self.X_Y = {
-            (0, 0): None,
-            (0, 1): None,
-            (1, 0): None,
-            (1, 1): None
+            (0, 0): 0.2,
+            (0, 1): 0.1,
+            (1, 0): 0.25,
+            (1, 1): 0.45
         }  # P(X=x, Y=y)
 
         self.X_C = {
-            (0, 0): None,
-            (0, 1): None,
-            (1, 0): None,
-            (1, 1): None
+            (0, 0): 0.3,
+            (0, 1): 0.1,
+            (1, 0): 0.2,
+            (1, 1): 0.4
         }  # P(X=x, C=c)
 
         self.Y_C = {
-            (0, 0): None,
-            (0, 1): None,
-            (1, 0): None,
-            (1, 1): None
+            (0, 0): 0.15,
+            (0, 1): 0.2,
+            (1, 0): 0.35,
+            (1, 1): 0.3
         }  # P(Y=y, C=c)
 
         self.X_Y_C = {
-            (0, 0, 0): None,
-            (0, 0, 1): None,
-            (0, 1, 0): None,
-            (0, 1, 1): None,
-            (1, 0, 0): None,
-            (1, 0, 1): None,
-            (1, 1, 0): None,
-            (1, 1, 1): None,
+            (0, 0, 0): 0.09,
+            (0, 0, 1): 0.04,
+            (0, 1, 0): 0.21,
+            (0, 1, 1): 0.06,
+            (1, 0, 0): 0.06,
+            (1, 0, 1): 0.16,
+            (1, 1, 0): 0.14,
+            (1, 1, 1): 0.24,
         }  # P(X=x, Y=y, C=c)
 
     def is_X_Y_dependent(self):
@@ -120,13 +97,15 @@ class conditional_independence():
         X = self.X
         Y = self.Y
         X_Y = self.X_Y
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+
+        mult = []
+        joint = []
+        
+        for k in X_Y.keys():
+            mult.append(X.get(k[0]) * Y.get(k[1]))
+            joint.append(X_Y.get(k))
+
+        return False in np.isclose(mult, joint)
 
     def is_X_Y_given_C_independent(self):
         """
@@ -138,13 +117,15 @@ class conditional_independence():
         X_C = self.X_C
         Y_C = self.Y_C
         X_Y_C = self.X_Y_C
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+
+        mult = []
+        joint = []
+        
+        for k in X_Y_C.keys():
+            mult.append(X_C.get((k[0], k[2])) * Y_C.get((k[1], k[2])) / C.get(k[2]))
+            joint.append(X_Y_C.get(k))
+        
+        return False not in np.isclose(mult, joint) 
 
 
 def normal_pdf(x, mean, std):
@@ -159,13 +140,7 @@ def normal_pdf(x, mean, std):
     Returns the normal distribution pdf according to the given mean and std for the given x.    
     """
     p = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    p = (1 / np.sqrt(2 * np.pi * (std ** 2))) * np.e ** (-((x - mean) ** 2 / (2 * (std ** 2))))
     return p
 
 class NaiveNormalClassDistribution():
@@ -181,56 +156,33 @@ class NaiveNormalClassDistribution():
         - dataset: The training dataset as a 2d numpy array, assuming the class label is the last column
         - class_value : The class label to calculate the class conditionals for.
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
-    
+        self.c_dataset = dataset[dataset[:, -1] == class_value]
+        self.class_value = class_value
+        self.mean = np.mean(self.c_dataset[:, :-1], axis=0)
+        self.std = np.std(self.c_dataset[:, :-1], axis=0)
+        self.total_size = dataset.shape[0]
+
     def get_prior(self):
         """
         Returns the prior porbability of the class, as computed from the training data.
         """
-        prior = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
-        return prior
+        return self.c_dataset.shape[0] / self.total_size
     
     def get_instance_likelihood(self, x):
         """
         Returns the likelihood of the instance given the class label according to
         the feature-specific classc conditionals fitted to the training data.
         """
-        likelihood = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        likelihood = 1.0
+        for i, feature in enumerate(x):
+            likelihood *= normal_pdf(feature, self.mean[i], self.std[i])
         return likelihood
     
     def get_instance_joint_prob(self, x):
         """
         Returns the joint probability of the input instance (x) and the class label.
         """
-        joint_prob = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
-        return joint_prob
+        return self.get_prior() * self.get_instance_likelihood(x)
 
 class MAPClassifier():
     def __init__(self, ccd0 , ccd1):
@@ -244,13 +196,8 @@ class MAPClassifier():
             - ccd0 : A ClassDistribution object for class label 0.
             - ccd1 : A ClassDistribution object for class label 1.
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        self.obj0 = ccd0
+        self.obj1 = ccd1
 
     def predict(self, x):
         """
@@ -262,15 +209,8 @@ class MAPClassifier():
             - 0 if the posterior probability of class 0 is higher and 1 otherwise.
         """
         pred = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        pred = 0 if self.obj0.get_instance_joint_prob(x) > self.obj1.get_instance_joint_prob(x) else 1
         return pred
-
     
 def multi_normal_pdf(x, mean, cov):
     """
@@ -285,13 +225,10 @@ def multi_normal_pdf(x, mean, cov):
     Returns the normal distribution pdf according to the given mean and var for the given x.    
     """
     pdf = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
+    d = mean.shape[0]
+    diff = x - mean
+    denominator = np.sqrt((2 * np.pi) ** d * np.linalg.det(cov))
+    pdf = (np.e ** (-0.5 * (diff.T @ np.linalg.inv(cov) @ diff))) / denominator
     return pdf
 
 class MultiNormalClassDistribution():
@@ -307,26 +244,21 @@ class MultiNormalClassDistribution():
         - dataset: The dataset as a numpy array
         - class_value : The class label to calculate the parameters for.
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        self.c_data = dataset[dataset[:, -1] == class_value, :-1]
+        self.class_value = class_value
+        self.mean = np.mean(self.c_data, axis=0)
+        self.total_size = dataset.shape[0]
+        self.class_size = self.c_data.shape[0]
+
+        self.cov = np.cov(self.c_data.T)
+        
         
     def get_prior(self):
         """
         Returns the prior porbability of the class, as computed from the training data.
         """
         prior = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        prior = self.class_size / self.total_size
         return prior
     
     def get_instance_likelihood(self, x):
@@ -335,13 +267,7 @@ class MultiNormalClassDistribution():
         the multivariate classc conditionals fitted to the training data.
         """
         likelihood = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        likelihood = multi_normal_pdf(x, self.mean, self.cov)
         return likelihood
     
     def get_instance_joint_prob(self, x):
@@ -349,15 +275,8 @@ class MultiNormalClassDistribution():
         Returns the joint probability of the input instance (x) and the class label.
         """
         joint_prob = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        joint_prob = self.get_prior() * self.get_instance_likelihood(x)
         return joint_prob
-
 
 
 def compute_accuracy(test_set, map_classifier):
@@ -371,15 +290,12 @@ def compute_accuracy(test_set, map_classifier):
     Ouput
         - Accuracy = #Correctly Classified / number of test samples
     """
-    acc = None
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    pass
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################
-    return acc
+    count = 0
+    for sample in test_set:
+        res = map_classifier.predict(sample[:-1])
+        if res == sample[-1]:
+            count += 1
+    return count / test_set.shape[0]
 
 class DiscreteNBClassDistribution():
     def __init__(self, dataset, class_value):
@@ -393,26 +309,18 @@ class DiscreteNBClassDistribution():
         - dataset: The dataset as a numpy array
         - class_value : The class label to calculate the probabilities for.
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        self.c_dataset = dataset[dataset[:, -1] == class_value]
+        self.class_value = class_value
+        self.size = dataset.shape[0]
+        self.num_classes = np.unique(dataset[:, -1]).size
+        self.c_dataset_size = self.c_dataset.shape[0]
     
     def get_prior(self):
         """
         Returns the prior porbability of the class, as computed from the training data.
         """
         prior = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        prior = self.c_dataset_size / self.size
         return prior
     
     def get_instance_likelihood(self, x):
@@ -420,14 +328,11 @@ class DiscreteNBClassDistribution():
         Returns the likelihood of the instance given the class label according to
         the product of feature-specific discrete class conidtionals fitted to the training data.
         """
-        likelihood = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        likelihood = 1.0
+        for j, v in enumerate(x):
+            count_v = np.sum(self.c_dataset[:, j] == v)
+            v_j = np.unique(self.c_dataset[:, j]).size
+            likelihood *= ((count_v + 1) / (self.c_dataset_size + v_j))
         return likelihood
     
     def get_instance_joint_prob(self, x):
@@ -435,11 +340,5 @@ class DiscreteNBClassDistribution():
         Returns the joint probability of the input instance (x) and the class label.
         """
         joint_prob = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        pass
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        joint_prob = self.get_prior() * self.get_instance_likelihood(x)
         return joint_prob
