@@ -1,19 +1,11 @@
 import numpy as np
 
 def poisson_log_pmf(k, rate):
-    """
-    k: A discrete instance
-    rate: poisson rate parameter (lambda)
-
-    return the log pmf value for instance k given the rate
-    """
-    log_p = 0.0
-    for sample in k:
-        factorial = 1
-        for i in range(1, sample + 1):
-            factorial *= i
-        log_p += sample * np.log(rate) - rate - np.log(factorial)
-    return log_p
+    k = np.asarray(k)
+    # Compute log(k!) manually (0! = 1, so log(0!) = 0)
+    log_k_fact = np.array([np.sum(np.log(np.arange(1, val+1))) if val > 0 else 0.0 for val in k])
+    log_p = k * np.log(rate) - rate - log_k_fact
+    return log_p if k.ndim > 0 else log_p.item()
 
 def possion_analytic_mle(samples):
     """
@@ -21,8 +13,8 @@ def possion_analytic_mle(samples):
 
     return: the rate that maximizes the likelihood
     """
-    mean = np.sum(samples)/ len(samples)
-    return mean
+    lambda_mle = np.mean(samples)
+    return lambda_mle
 
 def possion_confidence_interval(lambda_mle, n, alpha=0.05):
     """
@@ -34,10 +26,12 @@ def possion_confidence_interval(lambda_mle, n, alpha=0.05):
     """
     # Use norm.ppf to compute the inverse of the normal CDF
     from scipy.stats import norm
-    lower_bound = lambda_mle - np.sqrt(lambda_mle/n) * norm.ppf(1 - alpha/2)
-    upper_bound = lambda_mle + np.sqrt(lambda_mle/n) * norm.ppf(1 - alpha/2)
-
-    return lower_bound, upper_bound
+    z = norm.ppf(1-alpha/2)
+    std_err = np.sqrt(lambda_mle/n)
+    lower_bound = lambda_mle - z * std_err
+    upper_bound = lambda_mle + z * std_err
+ 
+    return max(0, lower_bound), upper_bound
 
 def get_poisson_log_likelihoods(samples, rates):
     """
@@ -139,8 +133,7 @@ def normal_pdf(x, mean, std):
  
     Returns the normal distribution pdf according to the given mean and std for the given x.    
     """
-    p = None
-    p = (1 / np.sqrt(2 * np.pi * (std ** 2))) * np.e ** (-((x - mean) ** 2 / (2 * (std ** 2))))
+    p = (1 / np.sqrt(2 * np.pi * (std ** 2))) * np.exp(-((x - mean) ** 2) / (2 * (std ** 2)))
     return p
 
 class NaiveNormalClassDistribution():
