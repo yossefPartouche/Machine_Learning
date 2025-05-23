@@ -34,8 +34,8 @@ def possion_confidence_interval(lambda_mle, n, alpha=0.05):
     """
     # Use norm.ppf to compute the inverse of the normal CDF
     from scipy.stats import norm
-    lower_bound = lambda_mle - np.sqrt(lambda_mle/n) * norm.ppf((1 - alpha) / 2)
-    upper_bound = lambda_mle + np.sqrt(lambda_mle/n) * norm.ppf((1 - alpha) / 2)
+    lower_bound = lambda_mle - np.sqrt(lambda_mle/n) * norm.ppf(1 - alpha/2)
+    upper_bound = lambda_mle + np.sqrt(lambda_mle/n) * norm.ppf(1 - alpha/2)
 
     return lower_bound, upper_bound
 
@@ -98,6 +98,14 @@ class conditional_independence():
         Y = self.Y
         X_Y = self.X_Y
 
+        mult = []
+        joint = []
+        
+        for k in X_Y.keys():
+            mult.append(X.get(k[0]) * Y.get(k[1]))
+            joint.append(X_Y.get(k))
+
+        return False in np.isclose(mult, joint)
 
     def is_X_Y_given_C_independent(self):
         """
@@ -109,6 +117,15 @@ class conditional_independence():
         X_C = self.X_C
         Y_C = self.Y_C
         X_Y_C = self.X_Y_C
+
+        mult = []
+        joint = []
+        
+        for k in X_Y_C.keys():
+            mult.append(X_C.get((k[0], k[2])) * Y_C.get((k[1], k[2])) / C.get(k[2]))
+            joint.append(X_Y_C.get(k))
+        
+        return False not in np.isclose(mult, joint) 
 
 
 def normal_pdf(x, mean, std):
@@ -139,17 +156,17 @@ class NaiveNormalClassDistribution():
         - dataset: The training dataset as a 2d numpy array, assuming the class label is the last column
         - class_value : The class label to calculate the class conditionals for.
         """
-        self.dataset = dataset[dataset[:, -1] == class_value]
+        self.c_dataset = dataset[dataset[:, -1] == class_value]
         self.class_value = class_value
-        self.mean = np.mean(self.dataset[:, :-1], axis=0)
-        self.std = np.std(self.dataset[:, :-1], axis=0)
-        self.size = dataset.shape[0]
+        self.mean = np.mean(self.c_dataset[:, :-1], axis=0)
+        self.std = np.std(self.c_dataset[:, :-1], axis=0)
+        self.total_size = dataset.shape[0]
 
     def get_prior(self):
         """
         Returns the prior porbability of the class, as computed from the training data.
         """
-        return self.dataset.shape[0] / self.size
+        return self.c_dataset.shape[0] / self.total_size
     
     def get_instance_likelihood(self, x):
         """
@@ -165,8 +182,6 @@ class NaiveNormalClassDistribution():
         """
         Returns the joint probability of the input instance (x) and the class label.
         """
-        joint = self.get_prior() * self.get_instance_likelihood(x)
-        print(joint)
         return self.get_prior() * self.get_instance_likelihood(x)
 
 class MAPClassifier():
@@ -229,13 +244,13 @@ class MultiNormalClassDistribution():
         - dataset: The dataset as a numpy array
         - class_value : The class label to calculate the parameters for.
         """
-        self.c_data = dataset[dataset[:, -1] == class_value]
+        self.c_data = dataset[dataset[:, -1] == class_value, :-1]
         self.class_value = class_value
-        self.mean = np.mean(self.c_data[:, :-1], axis=0)
-        self.size = dataset.shape[0]
+        self.mean = np.mean(self.c_data, axis=0)
+        self.total_size = dataset.shape[0]
+        self.class_size = self.c_data.shape[0]
 
-        diff = self.c_data[:, :-1] - self.mean
-        self.cov = diff.T @ diff / diff.shape[0]
+        self.cov = np.cov(self.c_data.T)
         
         
     def get_prior(self):
@@ -243,7 +258,7 @@ class MultiNormalClassDistribution():
         Returns the prior porbability of the class, as computed from the training data.
         """
         prior = None
-        prior = self.c_data.shape[0] / self.size
+        prior = self.class_size / self.total_size
         return prior
     
     def get_instance_likelihood(self, x):
@@ -261,7 +276,6 @@ class MultiNormalClassDistribution():
         """
         joint_prob = None
         joint_prob = self.get_prior() * self.get_instance_likelihood(x)
-        print(joint_prob)
         return joint_prob
 
 
@@ -306,7 +320,7 @@ class DiscreteNBClassDistribution():
         Returns the prior porbability of the class, as computed from the training data.
         """
         prior = None
-        prior = (self.c_dataset_size + 1) / (self.size + self.num_classes)
+        prior = self.c_dataset_size / self.size
         return prior
     
     def get_instance_likelihood(self, x):
@@ -317,7 +331,8 @@ class DiscreteNBClassDistribution():
         likelihood = 1.0
         for j, v in enumerate(x):
             count_v = np.sum(self.c_dataset[:, j] == v)
-            likelihood *= ((count_v + 1) / (self.c_dataset_size + np.unique(v).size))
+            v_j = np.unique(self.c_dataset[:, j]).size
+            likelihood *= ((count_v + 1) / (self.c_dataset_size + v_j))
         return likelihood
     
     def get_instance_joint_prob(self, x):
