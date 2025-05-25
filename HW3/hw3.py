@@ -40,9 +40,12 @@ def get_poisson_log_likelihoods(samples, rates):
 
     return: 1d numpy array, where each value represent that log-likelihood value of rates[i]
     """
-    likelihoods = np.array([poisson_log_pmf(samples, rate)for rate in rates])
+    samples = np.array(samples)
+    likelihoods = np.array([
+        np.sum(poisson_log_pmf(samples, rate)) 
+        for rate in rates
+    ])
     return likelihoods
-
 class conditional_independence():
 
     def __init__(self):
@@ -120,6 +123,19 @@ class conditional_independence():
             joint.append(X_Y_C.get(k))
         
         return False not in np.isclose(mult, joint) 
+    
+    """
+    def get_instance_likelihood(self, x):
+        
+        Returns the likelihood of the instance given the class label according to
+        the feature-specific classc conditionals fitted to the training data.
+        
+        # tak the max and sum of exponent of the log of the likelihood
+        likelihood = 1.0
+        for i, feature in enumerate(x):
+            likelihood *= normal_pdf(feature, self.mean[i], self.std[i])
+        return likelihood
+    """
 
 
 def normal_pdf(x, mean, std):
@@ -164,17 +180,33 @@ class NaiveNormalClassDistribution():
     def get_instance_likelihood(self, x):
         """
         Returns the likelihood of the instance given the class label according to
-        the feature-specific classc conditionals fitted to the training data.
+        the feature-specific class conditionals fitted to the training data.
         """
-        likelihood = 1.0
+        log_likelihood = 0.0
+        
         for i, feature in enumerate(x):
-            likelihood *= normal_pdf(feature, self.mean[i], self.std[i])
-        return likelihood
-    
+            # Handle edge case: zero standard deviation
+            if self.std[i] == 0:
+                if feature == self.mean[i]:
+                    continue
+                else:
+                    return 0.0
+            
+            # Get PDF and take log
+            pdf_val = normal_pdf(feature, self.mean[i], self.std[i])
+            if pdf_val <= 0:  # Handle numerical issues
+                return 0.0
+            
+            log_likelihood += np.log(pdf_val)
+        
+        # Convert back to likelihood
+        return np.exp(log_likelihood)
+
     def get_instance_joint_prob(self, x):
         """
         Returns the joint probability of the input instance (x) and the class label.
         """
+        #print(self.get_prior() * self.get_instance_likelihood(x))
         return self.get_prior() * self.get_instance_likelihood(x)
 
 class MAPClassifier():

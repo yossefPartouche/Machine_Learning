@@ -108,9 +108,8 @@ def compute_pinv(X, y):
     
     pinv_theta = (np.linalg.inv(X.T @ X)) @ X.T @ y
     return pinv_theta
-
+"""
 def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
-    """
     Learn the parameters of your model using the training set, but stop 
     the learning process once the improvement of the loss value is smaller 
     than epsilon. This function is very similar to the gradient descent 
@@ -126,7 +125,6 @@ def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
     Returns:
     - theta: The learned parameters of your model.
     - J_history: the loss value for every iteration.
-    """
     
     theta = theta.copy() # optional: theta outside the function will not change
     J_history = [] # Use a python list to save the loss value in every iteration
@@ -136,6 +134,30 @@ def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
         J = compute_loss(X, y, theta)
         J_history.append(J)
         if t > 0 and abs(J - J_history[-1]) < epsilon:
+            break
+            
+    return theta, J_history
+"""
+
+def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
+    theta = theta.copy()
+    J_history = []
+    
+    # Calculate initial loss
+    J_curr = compute_loss(X, y, theta)
+    J_history.append(J_curr)
+   
+    for t in range(max_iter):
+        # Update theta
+        theta = theta - (eta / len(y)) * (X.T @ (X @ theta - y))
+        
+        # Calculate new loss
+        J_prev = J_curr
+        J_curr = compute_loss(X, y, theta)
+        J_history.append(J_curr)
+        
+        # Check if improvement is smaller than epsilon
+        if abs(J_prev - J_curr) < epsilon:
             break
             
     return theta, J_history
