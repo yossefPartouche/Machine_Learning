@@ -2,6 +2,9 @@
 import numpy as np
 import pandas as pd
 
+def convertDim (x):
+   return x.reshape(-1,1)
+
 def preprocess(X,y):
     """
     Perform Standardization on the features and true labels.
@@ -175,10 +178,11 @@ def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
     
     theta = theta.copy() # optional: theta outside the function will not change
     J_history = [] # Use a python list to save the loss value in every iteration
-    curr_iters = 0 
     prev_loss = np.inf
+    x_train, y_train = preprocess(X, y)
     for i in range(max_iter):
         grad = compute_gradient(X, y, theta)
+        grad_clipped = np.clip(grad, 1e3, 1e3)
         theta = theta - eta*grad
 
         loss = compute_loss(X, y, theta)
@@ -189,7 +193,6 @@ def gradient_descent_stop_condition(X, y, theta, eta, max_iter, epsilon=1e-8):
             break   
         if abs(prev_loss - loss) < epsilon:
             break
-
         prev_loss = loss
 
     return theta, J_history
@@ -216,7 +219,7 @@ def find_best_learning_rate(X_train, y_train, X_val, y_val, iterations):
 
     """ Training """
     for eta in etas:
-        theta = np.random.random(size=X_train.shape[1]) 
+        theta = convertDim(np.random.random(size=X_train.shape[1]))
         theta, _  = gradient_descent_stop_condition(X_train, y_train, theta, eta, iterations, epsilon=1e-8)
         """Validating"""
         val_loss = compute_loss(X_val, y_val, theta)
