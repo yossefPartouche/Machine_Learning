@@ -106,7 +106,7 @@ class conditional_independence():
 
     def is_X_Y_given_C_independent(self):
         """
-        return True iff X_given_C and Y_given_C are indepndendent
+        return True iff X_given_C and Y_given_C are independendent
         """
         X = self.X
         Y = self.Y

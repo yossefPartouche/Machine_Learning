@@ -45,22 +45,23 @@ class LinearSVM(object):
         """
         raw_predictions = self.predict_raw(X)
         return np.where(raw_predictions >= 0, 1, 0)
-
+    
     def fit(self, X, y, verbose=False):
-        """
-        Fit training data (the learning phase).
+        
+        #Fit training data (the learning phase).
 
-        Parameters
-        ----------
-        X : array-like of shape (n_samples, n_features)
-            Training samples, where n_examples is the number of examples and
-            n_features is the number of features.
-        y : array-like of shape (n_samples,) or (n_samples, 1)
-            Class labels
-        verbose : bool, optional (default=False)
-            If True, print the loss every 100 iterations.
-        """
+        #Parameters
+        #----------
+        #X : array-like of shape (n_samples, n_features)
+        #    Training samples, where n_examples is the number of examples and
+        #    n_features is the number of features.
+        #y : array-like of shape (n_samples,) or (n_samples, 1)
+        #    Class labels
+        #verbose : bool, optional (default=False)
+         #   If True, print the loss every 100 iterations.
+        
         # set random seed
+
         np.random.seed(self.random_state)
 
         # get shape data
@@ -95,47 +96,21 @@ class LinearSVM(object):
                 break
             
             self.loss_history.append(loss)
-            
-
+    
     def compute_hinge_loss_gradients(self, X, y, raw_predictions):
-        """
-        Compute hinge loss and its gradients
-        Hinge loss:  0.5*||w||^2  + C/n * max(0, 1 - y * (<w,x> + w0))
-        Inputs:
-        - X: training data (n_examples, n_features)
-        - y: class labels (n_examples, 1) in {-1, 1} format
-        - raw_predictions: raw predictions (<w,x> + w0) (n_examples, 1)
-        Outputs:
-        - loss: scalar, the hinge loss
-        - dw: gradient of the loss with respect to w (n_features, 1)
-        - dw0: gradient of the loss with respect to w0 (scalar)
-        """
-        loss = 0
-        dw = np.zeros_like(self.w)
-        dw0 = 0
         n = X.shape[0]
+        dist = 1 - y * raw_predictions
 
-        dist = 1 - y* raw_predictions
-        
-        """Sum^0_{i=1} max{0, 1 - y^{(i)}(prediction)} """
+        # hinge losses
+        hinge_losses = np.maximum(0, dist)
+        loss = 0.5 * np.sum(self.w ** 2) + (self.C / n) * np.sum(hinge_losses)
 
-        loss = np.where(dist < 0, dist*0, dist)
-        loss_sum = np.sum(loss)
-
-        """ Check """
-        #print(loss_sum)
-
-        violated_indices = np.where(dist < 1)[0]
-        dw = self.w + (self.C / n) * np.sum(X[violated_indices]*y[violated_indices])
-        dw0 = np.sum(y[violated_indices])
-
-        """
-        The fit function will do 
-        w = w - eta(w) + eta((c/n)\sum_{i \in A})
-        create a set A for points that violate
-        """
-
-        loss = 0.5 * (np.sum(self.w ** 2) + self.w0**2) + (self.C / n) * loss_sum
+        # gradients
+        violated_indices = np.where(dist > 0)[0]
+        dw = self.w - (self.C / n) * np.sum(
+            X[violated_indices] * y[violated_indices], axis=0
+        ).reshape(-1, 1)
+        dw0 = - (self.C / n) * np.sum(y[violated_indices])
 
         return loss, dw, dw0
 
@@ -213,13 +188,7 @@ def norm_pdf(x, mu, sigma):
     """
     x = np.reshape(x, (-1, 1))  # ensure x is a column vector
     prob = np.zeros_like(x)
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################    
+    prob = (1 / np.sqrt(2 * np.pi * (sigma ** 2))) * np.exp(-((x - mu) ** 2) / (2 * (sigma ** 2)))
     return prob
 
 def gmm_pdf(x, weights, mus, sigmas):
@@ -234,15 +203,10 @@ def gmm_pdf(x, weights, mus, sigmas):
     - prob: the probability densities of the GMM at x
     """
     x = np.reshape(x, (-1, 1))
-    prob = np.zeros_like(x)
-    ###########################################################################
-    # TODO: Implement the function.                                           #
-    ###########################################################################
-    
-    ###########################################################################
-    #                             END OF YOUR CODE                            #
-    ###########################################################################    
-    return prob
+    unweighted_pdfs = np.array([norm_pdf(x, m, s).flatten() for m, s in zip(mus, sigmas)]) 
+    weighted_pdfs = weights[:, None] * unweighted_pdfs 
+    total_prob = np.sum(weighted_pdfs, axis=0)
+    return total_prob, weighted_pdfs, unweighted_pdfs
 
 class GMM(object):
     """
@@ -323,13 +287,26 @@ class GMM(object):
         - X: training data (n_examples, n_features=1)
         - verbose: if True, print initial parameters in the begninning and the loss every 5 iterations
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        self.init_params(X)
+
+        if verbose:
+            print("Initial parameters:", self.get_dist_params())
+
+        for i in range(self.max_iter):
+            self.expectation(X)
+            self.maximization(X)
+            loss_val = self.loss(X)
+            self.losses.append(loss_val)
+
+            if verbose and i % 5 == 0:
+                print(f"Iteration {i}: loss = {loss_val}")
+
+            if i > 0 and abs(self.losses[-1] - self.losses[-2]) < self.eps:
+                break
+
+
+
+
 
 
     def expectation(self, X):
@@ -340,14 +317,12 @@ class GMM(object):
         Inputs:
         - X: training data (n_examples, n_features=1)
         """
-        
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        total_prob, weighted_pdfs, _  = gmm_pdf(X, self.weights, self.mus, self.sigmas)
+        self.responsibilities = weighted_pdfs / total_prob
+
+        return self.responsibilities
+
+
 
     def maximization(self, X):
         """
@@ -356,13 +331,26 @@ class GMM(object):
         Inputs:
         - X: training data (n_examples, n_features=1)
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        n = X.shape[0]
+        X_flat = X.reshape(-1)
+
+        resp = np.array(self.responsibilities)
+        resp = resp.squeeze()                  # remove unit dims -> ideally (k, n)
+        if resp.ndim == 1:
+            resp = resp[np.newaxis, :]
+
+        Nk = resp.sum(axis=1)
+        Nk_safe = np.where(Nk == 0, self.eps, Nk)
+
+        self.weights = Nk_safe / n
+
+        self.mus = resp @ X_flat
+        self.mus = self.mus / Nk_safe
+
+        diff = X_flat[None, :] - self.mus[:, None]
+        var = (resp * (diff ** 2)).sum(axis=1) / Nk_safe
+        self.sigmas = np.sqrt(np.maximum(var, self.eps))
+        self.weights = self.weights / np.sum(self.weights)
 
     def loss(self, X):
         """
@@ -376,15 +364,12 @@ class GMM(object):
         # truncate very small sigmas to avoid numerical issues
         sigma_eps = 0.000000000001
         self.sigmas[self.sigmas < sigma_eps] = sigma_eps
-        c = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################    
+        n = X.shape[0]
 
+        probs = np.zeros((n, self.k))
+        total_prob, _, _ = gmm_pdf(X, self.weights, self.mus, self.sigmas)
+
+        c = -np.sum(np.log(total_prob + 1e-15))  
         return c
 
     def pdf(self, x):
@@ -395,15 +380,12 @@ class GMM(object):
         Outputs:
         - prob: the probability densities of the GMM at x
         """
-        prob = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
-        return prob
+        probs = np.zeros_like(x, dtype=float)
+        for j in range(self.k):
+            coeff = 1 / np.sqrt(2 * np.pi * self.sigmas[j]**2)
+            exponent = np.exp(- (x - self.mus[j])**2 / (2 * self.sigmas[j]**2))
+            probs += self.weights[j] * coeff * exponent
+        return probs
         
 
 
@@ -436,13 +418,29 @@ class NaiveBayesGMM(object):
         - X: training data (n_examples, n_features)
         - y: class labels (n_examples, 1)
         """
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
+        n_features = X.shape[1]
+    
+        self.gmm_dict = {}  # Initialize the dictionary to hold GMMs
+        self.prior = {}     # Initialize the dictionary for prior probabilities
 
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
+        classes = np.unique(y)
+        n_samples = X.shape[0]
+
+        for c_i in classes:
+            x_cls = X[y == c_i]
+            self.prior[c_i] = x_cls.shape[0] / n_samples  # Prior probability P(class)
+            
+            for feat_idx in range(n_features):
+                feature_vec = x_cls[:, feat_idx].reshape(-1, 1)  # Extract the single feature column, reshape for GMM
+                
+                gmm = GMM(k=self.k, random_state=self.random_state)
+                gmm.fit(feature_vec)
+                
+                self.gmm_dict[(c_i, feat_idx)] = gmm
+                
+                if verbose:
+                    print(f"Fitted GMM for class {c_i}, feature {feat_idx}")
+
 
     def predict(self, X):
         """
@@ -453,11 +451,20 @@ class NaiveBayesGMM(object):
         - class_predictions: predicted class labels (n_examples, 1)
         """
         class_predictions = None
-        ###########################################################################
-        # TODO: Implement the function.                                           #
-        ###########################################################################
-        
-        ###########################################################################
-        #                             END OF YOUR CODE                            #
-        ###########################################################################
-        return class_predictions
+        n_samples, n_features = X.shape
+        classes = list(self.prior.keys())
+        n_classes = len(classes)
+
+        scores = np.zeros((n_samples, n_classes))
+
+        for cls_idx, cls in enumerate(classes):
+            log_probs = np.zeros((n_samples, n_features))
+            for feat_idx in range(n_features):
+                pdf_vals = self.gmm_dict[(cls, feat_idx)].pdf(X[:, feat_idx])
+                log_probs[:, feat_idx] = np.log(pdf_vals + 1e-15)
+
+            scores[:, cls_idx] = np.log(self.prior[cls]) + np.sum(log_probs, axis=1)
+            predicted_indices = np.argmax(scores, axis=1)
+            class_predictions = np.array([classes[i] for i in predicted_indices])
+
+        return class_predictions.reshape(-1,1)
